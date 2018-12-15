@@ -16,43 +16,26 @@ class Lexer:
     @staticmethod
     def token_mapper(s):
         if s == "def":
-            return Token.DEF
+            return (Token.DEF, s)
         elif s == "extern":
-            return Token.EXTERN
-        elif type(s) == int:
-            return Token.NUM
-        else:
-            return Token.IDENTIFIER
-
-    @staticmethod
-    def identifier_check(t: Token, s: str):
-        if t == Token.IDENTIFIER:
-            if s.strip(".").isdigit():
-                raise SyntaxError("LEX: Not a valid number type")
-
-            if type(s[0]) is int:
+            return (Token.EXTERN, s)
+        elif s[0].isdigit():
+            if not s.replace(".", "").isdigit():
                 raise SyntaxError("LEX: Identifier must be started with character")
-
-        return (t, s)
+            if s.count(".") > 1:
+                raise SyntaxError("LEX: Not a valid number type")
+            s = float(s) if "." in s else int(s)
+            return (Token.NUM, s)
+        else:
+            return (Token.IDENTIFIER, s)
 
     def tokenizer(self):
-        code = map(lambda x: int(x) if x.isdigit() else x, filter(lambda x: x[0] != "#", self.code.split(" ")))
-        tokenized_code = map(self.identifier_check, map(self.token_mapper, code), filter(lambda x: x[0] != "#", self.code.split(" ")))
-        tokenized_code = list(tokenized_code)
+        code = [x for x in self.code.split() if x[0] != "#"]
+        tokenized_code = [self.token_mapper(x) for x in code]
         tokenized_code.append((Token.EOF, "\n"))
 
         return tokenized_code
 
 
 if __name__ == "__main__":
-    print(Lexer("def i am #asd code").tokenizer())
-
-
-
-
-
-
-
-
-
-
+    print(Lexer("def extern 12423.3 am #asd code \n adsfasdf").tokenizer())
