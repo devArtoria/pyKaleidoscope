@@ -1,5 +1,5 @@
 from typing import Type, Union, Any, List, Generator
-from .chapter_1_lexer import Lexer, Token, TokenKind
+from chapter_1_lexer import Lexer, Token, TokenKind
 
 
 class ExprAST:
@@ -25,7 +25,7 @@ class BinaryExprAST(ExprAST):
         self.rhs: Type[ExprAST] = rhs
 
     def dump(self, indent: int):
-        print("\t"*indent + "[{0}]: {1}".format(self.__class__.__name__, self.val))
+        print("\t"*indent + "[{0}]: {1}".format(self.__class__.__name__, self.op))
         self.lhs.dump(indent+1)
         self.rhs.dump(indent+1)
 
@@ -37,8 +37,9 @@ class CallExprAST(ExprAST):
 
     def dump(self, indent: int):
         print("\t"*indent, "[{0}]: {1}".format(self.__class__.__name__, self.calee))
+        print("\t"*(indent+1)+"args:")
         for i in self.args:
-            i.dump(indent+1)
+            i.dump(indent+2)
 
 
 class PrototypeAST(ExprAST):
@@ -47,7 +48,7 @@ class PrototypeAST(ExprAST):
         self.arguments: List[str] = arguments
 
     def dump(self, indent):
-        print("\t"*indent, "[{0}]: {1}".format(self.__class__.__name__, self.arguments))
+        print("\t"*indent, "[{0}]: {1} {2}".format(self.__class__.__name__, self.name, self.arguments))
 
 
 class FunctionAST(ExprAST):
@@ -56,8 +57,9 @@ class FunctionAST(ExprAST):
         self.body: Type[ExprAST] = body
 
     def dump(self, indent):
-        print("\t"*indent, "[{0}]: {1}".format(self.__class__.__name__, self.proto.dump()))
-        self.body.dump(indent+1)
+        print("\t"*indent, "[{0}]".format(self.__class__.__name__))
+        self.proto.dump(indent+1)
+        self.body.dump(indent+2)
 
 
 class ParseError(Exception):
@@ -76,8 +78,24 @@ class Parser:
             "/": 30
         }
 
+    def parse_toplevel(self, buf):
+        """Given a string, returns an AST node representing it."""
+        self.token_generator = Lexer(buf).tokens()
+        self.current_token = None
+        self.get_next_token()
+
+        if self.current_token.kind == TokenKind.EXTERN:
+            return self.parse_extern()
+        elif self.current_token.kind == TokenKind.DEF:
+            return self.parse_definition()
+        elif self.current_token == ';':
+            self.get_next_token()
+            return None
+        else:
+            return self.parse_toplevel_expr()
+
     def get_token_priority(self):
-        return self.priority_map.get(self.current_token.value, 0)
+        return self.priority_map.get(self.current_token.value, -1)
 
     def get_next_token(self):
         self.current_token = next(self.token_generator)
@@ -102,23 +120,23 @@ class Parser:
         id_name = self.current_token.value
         self.get_next_token()
 
-        if self.current_token != "(":  # parse variable def expr
+        if self.current_token.value != "(":  # parse variable def expr
             return VariableExprAST(id_name)
-        else:  # parse call expr
-            args = []
-            if self.current_token != ")":
-                while True:
-                    args.append(self.parse_expr())
-                    if self.current_token == ")":
-                        break
-                    if self.current_token != ",":
-                        raise ParseError("Expected ',' or ')'")
 
-                    self.get_next_token()
+        self.get_next_token()
+        args = []
+        if self.current_token.value != ")":
+            while True:
+                args.append(self.parse_expr())
+                if self.current_token.value == ")":
+                    break
+                if self.current_token.value != ",":
+                    raise ParseError("Expected ',' or ')'")
+                self.get_next_token()
 
-            self.get_next_token()
+        self.get_next_token()
 
-            return CallExprAST
+        return CallExprAST(id_name, args)
 
     def parse_primary(self):
         current_token = self.current_token
@@ -139,7 +157,6 @@ class Parser:
     def parse_bin_op_rhs(self, expr_priority, lhs):
         while True:
             current_token_priority = self.get_token_priority()
-
             if current_token_priority < expr_priority:
                 return lhs
 
@@ -164,13 +181,18 @@ class Parser:
         if self.current_token.value != '(':
             raise ParseError("Expected ( in prototype")
 
+        self.get_next_token()
+
         args = []
+
         while self.current_token.kind == TokenKind.IDENTIFIER:
             args.append(self.current_token.value)
             self.get_next_token()
 
         if self.current_token.value != ")":
             raise ParseError("Expected ) in prototype")
+
+        self.get_next_token()
 
         return PrototypeAST(func_name, args)
 
@@ -188,12 +210,8 @@ class Parser:
     def parse_toplevel_expr(self):
         expr = self.parse_expr()
         return FunctionAST(PrototypeAST("", []), expr)
-    
 
 
-
-
-        
-
-
-
+if __name__ == "__main__":
+    p = Parser()
+    print(p.parse_toplevel('def func(a b) a+bar(b)').dump(0))
