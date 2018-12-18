@@ -214,4 +214,7 @@ class Parser:
 
 if __name__ == "__main__":
     p = Parser()
-    print(p.parse_toplevel('def func(a b) a+bar(b)').dump(0))
+    while True:
+        code = input("ready>")
+        print("result>")
+        p.parse_toplevel(code).dump(0)
