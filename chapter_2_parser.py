@@ -69,10 +69,14 @@ class Parser:
         self.current_token: Token = None
         self.priority_map = {
             "<": 10,
+            ">": 10,
+            "<=": 10,
+            ">=": 10,
             "+": 20,
             "-": 20,
             "*": 30,
-            "/": 30
+            "/": 30,
+            "%": 30,
         }
 
     def parse_toplevel(self, buf):
