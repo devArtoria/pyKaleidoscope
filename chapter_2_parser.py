@@ -36,10 +36,7 @@ class CallExprAST(ExprAST):
         self.args: List[Type[ExprAST]] = args
 
     def dump(self, indent: int):
-        print("\t"*indent, "[{0}]: {1}".format(self.__class__.__name__, self.calee))
-        print("\t"*(indent+1)+"args:")
-        for i in self.args:
-            i.dump(indent+2)
+        print("\t"*indent, "[{0}]: {1} {2}".format(self.__class__.__name__, self.calee, self.args))
 
 
 class PrototypeAST(ExprAST):
